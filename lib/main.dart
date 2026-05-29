@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter_bluetooth_classic/flutter_bluetooth_classic.dart';
+import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 
 void main() {
   runApp(const MyApp());
@@ -93,8 +93,7 @@ class FarmerHomePage extends StatefulWidget {
 class _FarmerHomePageState
     extends State<FarmerHomePage> {
 
-  final FlutterBluetoothClassic bluetooth =
-    FlutterBluetoothClassic();
+  final FlutterBlueClassic bluetooth = FlutterBlueClassic();
 
   String soilTemp = "--";
   String soilMoist = "--";
