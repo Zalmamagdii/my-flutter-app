@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter_bluetooth_classic_serial/flutter_bluetooth_classic_serial.dart';
+import 'package:flutter_bluetooth_classic/flutter_bluetooth_classic.dart';
 
 void main() {
   runApp(const MyApp());
@@ -93,7 +93,8 @@ class FarmerHomePage extends StatefulWidget {
 class _FarmerHomePageState
     extends State<FarmerHomePage> {
 
-  FlutterBluetoothClassicSerial bluetooth = FlutterBluetoothClassicSerial();
+  final FlutterBluetoothClassic bluetooth =
+    FlutterBluetoothClassic();
 
   String soilTemp = "--";
   String soilMoist = "--";
@@ -109,19 +110,13 @@ class _FarmerHomePageState
   Future<void> connectBluetooth() async {
   try {
 
-    bool enabled =
-        await bluetooth.isBluetoothEnabled() ?? false;
-
-    if (!enabled) {
-      await bluetooth.requestBluetoothEnabled();
-    }
-
     await bluetooth.connect(
-        "98:D3:11:FC:DA:6B");
+      "98:D3:11:FC:DA:6B",
+    );
 
     print("Connected");
 
-    bluetooth.onDeviceDataReceived().listen((event) {
+    bluetooth.onDataReceived.listen((event) {
 
       String received =
           utf8.decode(event).trim();
@@ -132,25 +127,28 @@ class _FarmerHomePageState
           received.split(',');
 
       if (values.length == 4) {
+
         setState(() {
+
           soilTemp = values[0];
           soilMoist = values[1];
           airTemp = values[2];
           humidity = values[3];
+
         });
       }
     });
 
   } catch (e) {
-    print(e);
+    print("Bluetooth Error $e");
   }
 }
 
-  @override
-  void dispose() {
-    connection?.dispose();
-    super.dispose();
-  }
+@override
+void dispose() {
+  bluetooth.disconnect();
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
