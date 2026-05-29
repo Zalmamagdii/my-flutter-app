@@ -112,30 +112,35 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
       });
 
       connection?.input?.listen((event) {
-        buffer += utf8.decode(event);
+  String data = utf8.decode(event);
 
-        if (buffer.contains("\n")) {
-          List<String> lines = buffer.split("\n");
+  print("RAW: $data");
 
-          for (var line in lines) {
-            line = line.trim();
-            if (line.isEmpty) continue;
+  buffer += data;
 
-            List<String> values = line.split(',');
+  List<String> packets = buffer.split('\n');
 
-            if (values.length == 4) {
-              setState(() {
-                soilTemp = values[0];
-                soilMoist = values[1];
-                airTemp = values[2];
-                humidity = values[3];
-              });
-            }
-          }
+  for (int i = 0; i < packets.length - 1; i++) {
+    String line = packets[i].trim();
 
-          buffer = lines.last;
-        }
+    if (line.isEmpty) continue;
+
+    print("LINE: $line");
+
+    List<String> values = line.split(',');
+
+    if (values.length == 4) {
+      setState(() {
+        soilTemp = values[0];
+        soilMoist = values[1];
+        airTemp = values[2];
+        humidity = values[3];
       });
+    }
+  }
+
+  buffer = packets.last;
+});
 
     } catch (e) {
       print("Bluetooth Error: $e");
