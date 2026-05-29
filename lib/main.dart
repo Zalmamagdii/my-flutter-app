@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// START PAGE
+// START PAGE (UNCHANGED)
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
 
@@ -36,42 +36,22 @@ class StartPage extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 70),
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xff72C25B),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 70,
-                    vertical: 18,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(40),
-                    side: const BorderSide(
-                      color: Color(0xff4E9A39),
-                      width: 4,
-                    ),
-                  ),
-                ),
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          const FarmerHomePage(),
+                      builder: (context) => const FarmerHomePage(),
                     ),
                   );
                 },
                 child: const Text(
                   "Start",
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 32),
                 ),
               ),
             ),
@@ -87,8 +67,7 @@ class FarmerHomePage extends StatefulWidget {
   const FarmerHomePage({super.key});
 
   @override
-  State<FarmerHomePage> createState() =>
-      _FarmerHomePageState();
+  State<FarmerHomePage> createState() => _FarmerHomePageState();
 }
 
 class _FarmerHomePageState extends State<FarmerHomePage> {
@@ -102,8 +81,8 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   String humidity = "--";
 
   String buffer = "";
+  bool isConnected = false;
 
-  // Request Android Bluetooth permissions
   Future<void> requestPermissions() async {
     await [
       Permission.bluetoothConnect,
@@ -115,61 +94,54 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   @override
   void initState() {
     super.initState();
-
-    requestPermissions().then((_) {
-      connectBluetooth();
-    });
+    requestPermissions();
   }
 
   Future<void> connectBluetooth() async {
     try {
+      print("Connecting...");
 
-      print("Trying Bluetooth connection...");
+      connection?.dispose();
 
-      connection = await bluetooth.connect(
-        "98:D3:11:FC:DA:6B",
-      );
+      connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
 
-      print("Bluetooth connected");
+      print("Connected");
 
-      connection!.input!.listen((event) {
+      setState(() {
+        isConnected = true;
+      });
 
+      connection?.input?.listen((event) {
         buffer += utf8.decode(event);
 
         if (buffer.contains("\n")) {
-
           List<String> lines = buffer.split("\n");
 
           for (var line in lines) {
-
             line = line.trim();
-
             if (line.isEmpty) continue;
-
-            print("Received: $line");
 
             List<String> values = line.split(',');
 
             if (values.length == 4) {
-
               setState(() {
-
                 soilTemp = values[0];
                 soilMoist = values[1];
                 airTemp = values[2];
                 humidity = values[3];
-
               });
             }
           }
 
-          // Keep incomplete data if any
           buffer = lines.last;
         }
       });
 
     } catch (e) {
       print("Bluetooth Error: $e");
+      setState(() {
+        isConnected = false;
+      });
     }
   }
 
@@ -178,7 +150,6 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     connection?.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -206,49 +177,46 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                   children: [
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
 
                         Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: const [
-
-                            Text(
-                              "Hello, Farmers",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight:
-                                    FontWeight.bold,
-                              ),
-                            ),
-
+                            Text("Hello, Farmers",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold)),
                             SizedBox(height: 5),
-
-                            Text(
-                              "Live Sensor Monitoring",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
+                            Text("Live Sensor Monitoring",
+                                style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16)),
                           ],
                         ),
 
-                        Container(
-                          padding:
-                              const EdgeInsets.all(12),
-                          decoration:
-                              const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.bluetooth,
-                            color: Colors.blue,
-                          ),
+                        Column(
+                          children: [
+
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.bluetooth, color: Colors.blue),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            ElevatedButton(
+                              onPressed: connectBluetooth,
+                              child: Text(
+                                isConnected ? "Connected" : "Connect HC-05",
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -257,65 +225,38 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
                     // WEATHER CARD
                     Container(
-                      padding:
-                          const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius:
-                            BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(30),
                       ),
 
                       child: Column(
                         children: [
 
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
 
-                              Row(
-                                children: const [
-
-                                  Icon(
-                                    Icons
-                                        .location_on_outlined,
-                                    color: Colors.grey,
-                                  ),
-
+                              const Row(
+                                children: [
+                                  Icon(Icons.location_on_outlined, color: Colors.grey),
                                   SizedBox(width: 5),
-
-                                  Text(
-                                    "Egypt, Aswan",
-                                    style: TextStyle(
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
+                                  Text("Egypt, Aswan",
+                                      style: TextStyle(fontWeight: FontWeight.bold)),
                                 ],
                               ),
 
                               Row(
                                 children: [
-
-                                  const Icon(
-                                    Icons.cloud,
-                                    size: 45,
-                                    color:
-                                        Colors.lightBlueAccent,
-                                  ),
-
-                                  const SizedBox(
-                                      width: 10),
-
+                                  const Icon(Icons.cloud,
+                                      size: 45,
+                                      color: Colors.lightBlueAccent),
+                                  const SizedBox(width: 10),
                                   Text(
                                     "$airTemp°C",
-                                    style:
-                                        const TextStyle(
-                                      fontSize: 30,
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
+                                    style: const TextStyle(
+                                        fontSize: 30, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -325,44 +266,12 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                           const SizedBox(height: 20),
 
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceAround,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-
-                              WeatherItem(
-                                icon:
-                                    Icons.thermostat,
-                                value:
-                                    "$soilTemp°C",
-                                title:
-                                    "Soil temp",
-                              ),
-
-                              WeatherItem(
-                                icon: Icons.opacity,
-                                value:
-                                    soilMoist,
-                                title:
-                                    "Soil moist",
-                              ),
-
-                              WeatherItem(
-                                icon: Icons.air,
-                                value:
-                                    "$airTemp°C",
-                                title:
-                                    "Air temp",
-                              ),
-
-                              WeatherItem(
-                                icon: Icons
-                                    .water_drop_outlined,
-                                value:
-                                    "$humidity%",
-                                title:
-                                    "Humidity",
-                              ),
+                              WeatherItem(icon: Icons.thermostat, value: "$soilTemp°C", title: "Soil temp"),
+                              WeatherItem(icon: Icons.opacity, value: soilMoist, title: "Soil moist"),
+                              WeatherItem(icon: Icons.air, value: "$airTemp°C", title: "Air temp"),
+                              WeatherItem(icon: Icons.water_drop_outlined, value: "$humidity%", title: "Humidity"),
                             ],
                           ),
                         ],
@@ -376,80 +285,31 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
               // MEASURES
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                        horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    const Text(
-                      "Measures Summary",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
+                    const Text("Measures Summary",
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
 
                     const SizedBox(height: 20),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment
-                              .spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-
-                        MeasureCard(
-                          title: "Soil temp",
-                          value:
-                              "$soilTemp°C",
-                          status: "Live",
-                          color: Colors.green,
-                          progress: 0.6,
-                        ),
-
-                        MeasureCard(
-                          title:
-                              "Soil moist",
-                          value:
-                              soilMoist,
-                          status: "Live",
-                          color: Colors.blue,
-                          progress: 0.7,
-                        ),
+                        MeasureCard(title: "Soil temp", value: "$soilTemp°C", status: "Live", color: Colors.green, progress: 0.6),
+                        MeasureCard(title: "Soil moist", value: soilMoist, status: "Live", color: Colors.blue, progress: 0.7),
                       ],
                     ),
 
                     const SizedBox(height: 10),
 
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment
-                              .spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-
-                        MeasureCard(
-                          title:
-                              "Air temp",
-                          value:
-                              "$airTemp°C",
-                          status: "Live",
-                          color:
-                              Colors.orange,
-                          progress: 0.4,
-                        ),
-
-                        MeasureCard(
-                          title:
-                              "Humidity",
-                          value:
-                              "$humidity%",
-                          status: "Live",
-                          color: Colors.red,
-                          progress: 0.3,
-                        ),
+                        MeasureCard(title: "Air temp", value: "$airTemp°C", status: "Live", color: Colors.orange, progress: 0.4),
+                        MeasureCard(title: "Humidity", value: "$humidity%", status: "Live", color: Colors.red, progress: 0.3),
                       ],
                     ),
                   ],
@@ -482,19 +342,8 @@ class WeatherItem extends StatelessWidget {
       children: [
         Icon(icon, color: Colors.grey),
         const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
-          ),
-        ),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }
@@ -502,7 +351,6 @@ class WeatherItem extends StatelessWidget {
 
 // MEASURE CARD
 class MeasureCard extends StatelessWidget {
-
   final String title;
   final String value;
   final String status;
@@ -520,72 +368,35 @@ class MeasureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: 150,
       padding: const EdgeInsets.all(10),
-
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
       ),
-
       child: Column(
         children: [
-
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight:
-                  FontWeight.bold,
-            ),
-          ),
-
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-
           Stack(
-            alignment:
-                Alignment.center,
+            alignment: Alignment.center,
             children: [
-
               SizedBox(
                 width: 55,
                 height: 55,
-                child:
-                    CircularProgressIndicator(
+                child: CircularProgressIndicator(
                   value: progress,
                   strokeWidth: 6,
-                  backgroundColor:
-                      Colors.grey.shade300,
-                  valueColor:
-                      AlwaysStoppedAnimation(
-                          color),
+                  backgroundColor: Colors.grey.shade300,
+                  valueColor: AlwaysStoppedAnimation(color),
                 ),
               ),
-
-              Text(
-                value,
-                style:
-                    const TextStyle(
-                  fontSize: 11,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
             ],
           ),
-
           const SizedBox(height: 10),
-
-          Text(
-            status,
-            style: TextStyle(
-              color: color,
-              fontWeight:
-                  FontWeight.bold,
-            ),
-          ),
+          Text(status, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
         ],
       ),
     );
