@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const MyApp());
@@ -90,8 +91,7 @@ class FarmerHomePage extends StatefulWidget {
       _FarmerHomePageState();
 }
 
-class _FarmerHomePageState
-    extends State<FarmerHomePage> {
+class _FarmerHomePageState extends State<FarmerHomePage> {
 
   final FlutterBlueClassic bluetooth = FlutterBlueClassic();
   BluetoothConnection? connection;
@@ -101,43 +101,83 @@ class _FarmerHomePageState
   String airTemp = "--";
   String humidity = "--";
 
-  @override
-void initState() {
-  super.initState();
-  connectBluetooth();
-}
+  String buffer = "";
 
-Future<void> connectBluetooth() async {
-  try {
-    connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
-
-    print("Connected");
-
-    connection!.input!.listen((event) {
-      String received = utf8.decode(event).trim();
-      print(received);
-
-      List<String> values = received.split(',');
-
-      if (values.length == 4) {
-        setState(() {
-          soilTemp = values[0];
-          soilMoist = values[1];
-          airTemp = values[2];
-          humidity = values[3];
-        });
-      }
-    });
-
-  } catch (e) {
-    print("Bluetooth Error $e");
+  // Request Android Bluetooth permissions
+  Future<void> requestPermissions() async {
+    await [
+      Permission.bluetoothConnect,
+      Permission.bluetoothScan,
+      Permission.location,
+    ].request();
   }
-}
 
-@override
-void dispose() {
-  connection?.dispose(); // ✅ correct
-  super.dispose();
+  @override
+  void initState() {
+    super.initState();
+
+    requestPermissions().then((_) {
+      connectBluetooth();
+    });
+  }
+
+  Future<void> connectBluetooth() async {
+    try {
+
+      print("Trying Bluetooth connection...");
+
+      connection = await bluetooth.connect(
+        "98:D3:11:FC:DA:6B",
+      );
+
+      print("Bluetooth connected");
+
+      connection!.input!.listen((event) {
+
+        buffer += utf8.decode(event);
+
+        if (buffer.contains("\n")) {
+
+          List<String> lines = buffer.split("\n");
+
+          for (var line in lines) {
+
+            line = line.trim();
+
+            if (line.isEmpty) continue;
+
+            print("Received: $line");
+
+            List<String> values = line.split(',');
+
+            if (values.length == 4) {
+
+              setState(() {
+
+                soilTemp = values[0];
+                soilMoist = values[1];
+                airTemp = values[2];
+                humidity = values[3];
+
+              });
+            }
+          }
+
+          // Keep incomplete data if any
+          buffer = lines.last;
+        }
+      });
+
+    } catch (e) {
+      print("Bluetooth Error: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    connection?.dispose();
+    super.dispose();
+  }
 }
 
   @override
