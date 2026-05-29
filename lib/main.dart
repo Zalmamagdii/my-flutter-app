@@ -178,7 +178,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     connection?.dispose();
     super.dispose();
   }
-}
+
 
   @override
   Widget build(BuildContext context) {
