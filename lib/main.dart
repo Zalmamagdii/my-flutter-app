@@ -94,6 +94,7 @@ class _FarmerHomePageState
     extends State<FarmerHomePage> {
 
   final FlutterBlueClassic bluetooth = FlutterBlueClassic();
+  BluetoothConnection? connection;
 
   String soilTemp = "--";
   String soilMoist = "--";
@@ -101,39 +102,29 @@ class _FarmerHomePageState
   String humidity = "--";
 
   @override
-  void initState() {
-    super.initState();
-    connectBluetooth();
-  }
+void initState() {
+  super.initState();
+  connectBluetooth();
+}
 
-  Future<void> connectBluetooth() async {
+Future<void> connectBluetooth() async {
   try {
-
-    await bluetooth.connect(
-      "98:D3:11:FC:DA:6B",
-    );
+    connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
 
     print("Connected");
 
-    bluetooth.onDataReceived.listen((event) {
-
-      String received =
-          utf8.decode(event).trim();
-
+    connection!.input!.listen((event) {
+      String received = utf8.decode(event).trim();
       print(received);
 
-      List<String> values =
-          received.split(',');
+      List<String> values = received.split(',');
 
       if (values.length == 4) {
-
         setState(() {
-
           soilTemp = values[0];
           soilMoist = values[1];
           airTemp = values[2];
           humidity = values[3];
-
         });
       }
     });
@@ -145,7 +136,7 @@ class _FarmerHomePageState
 
 @override
 void dispose() {
-  bluetooth.disconnect();
+  connection?.dispose(); // ✅ correct
   super.dispose();
 }
 
