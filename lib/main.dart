@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:flutter_bluetooth_classic_serial/flutter_bluetooth_classic_serial.dart';
 
 void main() {
   runApp(const MyApp());
@@ -93,7 +93,7 @@ class FarmerHomePage extends StatefulWidget {
 class _FarmerHomePageState
     extends State<FarmerHomePage> {
 
-  BluetoothConnection? connection;
+  FlutterBluetoothClassicSerial bluetooth = FlutterBluetoothClassicSerial();
 
   String soilTemp = "--";
   String soilMoist = "--";
@@ -107,38 +107,44 @@ class _FarmerHomePageState
   }
 
   Future<void> connectBluetooth() async {
-    try {
+  try {
 
-      connection =
-          await BluetoothConnection.toAddress(
-              "98:D3:11:FC:DA:6B");
+    bool enabled =
+        await bluetooth.isBluetoothEnabled() ?? false;
 
-      print("Connected to HC05");
-
-      connection!.input!.listen((data) {
-
-        String received =
-            ascii.decode(data).trim();
-
-        print(received);
-
-        List<String> values =
-            received.split(',');
-
-        if (values.length == 4) {
-          setState(() {
-            soilTemp = values[0];
-            soilMoist = values[1];
-            airTemp = values[2];
-            humidity = values[3];
-          });
-        }
-      });
-
-    } catch (e) {
-      print("Bluetooth Error: $e");
+    if (!enabled) {
+      await bluetooth.requestBluetoothEnabled();
     }
+
+    await bluetooth.connect(
+        "98:D3:11:FC:DA:6B");
+
+    print("Connected");
+
+    bluetooth.onDeviceDataReceived().listen((event) {
+
+      String received =
+          utf8.decode(event).trim();
+
+      print(received);
+
+      List<String> values =
+          received.split(',');
+
+      if (values.length == 4) {
+        setState(() {
+          soilTemp = values[0];
+          soilMoist = values[1];
+          airTemp = values[2];
+          humidity = values[3];
+        });
+      }
+    });
+
+  } catch (e) {
+    print(e);
   }
+}
 
   @override
   void dispose() {
