@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_bluetooth_classic_serial: ^0.0.3
+  flutter_blue_plus: ^1.0.0
 
 dev_dependencies:
   flutter_test:
