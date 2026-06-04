@@ -113,7 +113,6 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
       connection?.input?.listen((event) {
   String data = utf8.decode(event);
-
   print("RAW: $data");
 
   buffer += data;
@@ -121,7 +120,8 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   List<String> packets = buffer.split('\n');
 
   for (int i = 0; i < packets.length - 1; i++) {
-    String line = packets[i].trim();
+    // ✅ Strip BOTH \r and \n and extra whitespace
+    String line = packets[i].replaceAll('\r', '').trim();
 
     if (line.isEmpty) continue;
 
@@ -129,13 +129,17 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
     List<String> values = line.split(',');
 
-    if (values.length == 4) {
+    // ✅ Use >= 4 instead of == 4 to be more tolerant
+    if (values.length >= 4) {
       setState(() {
-        soilTemp = values[0];
-        soilMoist = values[1];
-        airTemp = values[2];
-        humidity = values[3];
+        soilTemp  = values[0].trim();
+        soilMoist = values[1].trim();
+        airTemp   = values[2].trim();
+        humidity  = values[3].trim();
       });
+      print("✅ Parsed: soilTemp=$soilTemp moist=$soilMoist air=$airTemp hum=$humidity");
+    } else {
+      print("⚠️ Bad line (${values.length} parts): '$line'");
     }
   }
 
