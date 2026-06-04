@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import 'dart:typed_data';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
@@ -19,7 +20,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// START PAGE (UNCHANGED)
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
 
@@ -49,10 +49,7 @@ class StartPage extends StatelessWidget {
                     ),
                   );
                 },
-                child: const Text(
-                  "Start",
-                  style: TextStyle(fontSize: 32),
-                ),
+                child: const Text("Start", style: TextStyle(fontSize: 32)),
               ),
             ),
           ),
@@ -62,7 +59,6 @@ class StartPage extends StatelessWidget {
   }
 }
 
-// HOME PAGE
 class FarmerHomePage extends StatefulWidget {
   const FarmerHomePage({super.key});
 
@@ -72,17 +68,17 @@ class FarmerHomePage extends StatefulWidget {
 
 class _FarmerHomePageState extends State<FarmerHomePage> {
 
-  String rawDebug = "No data yet";
-  final FlutterBlueClassic bluetooth = FlutterBlueClassic();
   BluetoothConnection? connection;
 
-  String soilTemp = "--";
+  String soilTemp  = "--";
   String soilMoist = "--";
-  String airTemp = "--";
-  String humidity = "--";
+  String airTemp   = "--";
+  String humidity  = "--";
+  String rawDebug  = "No data yet";
 
   String buffer = "";
   bool isConnected = false;
+  bool isConnecting = false;
 
   Future<void> requestPermissions() async {
     await [
@@ -99,90 +95,83 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   }
 
   Future<void> connectBluetooth() async {
-  try {
-    print("Connecting...");
+    if (isConnecting) return;
 
-    connection?.dispose();
-    connection = null;
+    setState(() => isConnecting = true);
 
-    setState(() {
-      isConnected = false;
-      soilTemp  = "--";
-      soilMoist = "--";
-      airTemp   = "--";
-      humidity  = "--";
-    });
+    try {
+      connection?.dispose();
+      connection = null;
 
-    connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
+      connection = await BluetoothConnection.toAddress("98:D3:11:FC:DA:6B");
 
-    // ✅ Small delay to let the connection stabilize
-    await Future.delayed(const Duration(milliseconds: 500));
+      setState(() {
+        isConnected  = true;
+        isConnecting = false;
+        rawDebug     = "Connected! Waiting for data...";
+      });
 
-    print("Connected!");
+      connection!.input!.listen(
+        (Uint8List data) {
+          String incoming = utf8.decode(data);
 
-    setState(() {
-      isConnected = true;
-    });
+          setState(() => rawDebug = "GOT: $incoming");
 
-    // ✅ Store stream subscription so it doesn't get GC'd
-    connection?.input?.listen(
-      (event) {
-        String data = utf8.decode(event);
-        setState(() => rawDebug = "GOT: $data");
-        print("RAW: '$data'");
+          buffer += incoming;
 
-        buffer += data;
+          List<String> packets = buffer.split('\n');
 
-        List<String> packets = buffer.split('\n');
+          for (int i = 0; i < packets.length - 1; i++) {
+            String line = packets[i].replaceAll('\r', '').trim();
 
-        for (int i = 0; i < packets.length - 1; i++) {
-          String line = packets[i].replaceAll('\r', '').trim();
+            if (line.isEmpty) continue;
 
-          if (line.isEmpty) continue;
+            // Strip "Sending: " prefix if present
+            if (line.startsWith("Sending:")) {
+              line = line.replaceFirst("Sending:", "").trim();
+            }
 
-          // ✅ Skip the "Sending: " prefix if it leaks through
-          if (line.startsWith("Sending:")) {
-            line = line.replaceFirst("Sending:", "").trim();
+            List<String> values = line.split(',');
+
+            if (values.length >= 4) {
+              setState(() {
+                soilTemp  = values[0].trim();
+                soilMoist = values[1].trim();
+                airTemp   = values[2].trim();
+                humidity  = values[3].trim();
+                rawDebug  = "✅ $line";
+              });
+            }
           }
 
-          print("LINE: '$line'");
+          buffer = packets.last;
+        },
 
-          List<String> values = line.split(',');
+        onDone: () {
+          setState(() {
+            isConnected = false;
+            rawDebug    = "Disconnected";
+          });
+        },
 
-          if (values.length >= 4) {
-            setState(() {
-              soilTemp  = values[0].trim();
-              soilMoist = values[1].trim();
-              airTemp   = values[2].trim();
-              humidity  = values[3].trim();
-            });
-            print("✅ soilTemp=$soilTemp moist=$soilMoist air=$airTemp hum=$humidity");
-          } else {
-            print("⚠️ Only ${values.length} parts in: '$line'");
-          }
-        }
+        onError: (error) {
+          setState(() {
+            isConnected = false;
+            rawDebug    = "Error: $error";
+          });
+        },
 
-        buffer = packets.last;
-      },
+        cancelOnError: false,
+      );
 
-      onError: (error) {
-        print("Stream error: $error");
-        setState(() => isConnected = false);
-      },
-
-      onDone: () {
-        print("Stream closed");
-        setState(() => isConnected = false);
-      },
-
-      cancelOnError: false, // ✅ Don't kill stream on a single error
-    );
-
-  } catch (e) {
-    print("Bluetooth Error: $e");
-    setState(() => isConnected = false);
+    } catch (e) {
+      setState(() {
+        isConnected  = false;
+        isConnecting = false;
+        rawDebug     = "Failed: $e";
+      });
+    }
   }
-}
 
   @override
   void dispose() {
@@ -192,16 +181,13 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: const Color(0xffEDEDE7),
-
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
 
-              // TOP SECTION
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: const BoxDecoration(
@@ -211,7 +197,6 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                     bottomRight: Radius.circular(40),
                   ),
                 ),
-
                 child: Column(
                   children: [
 
@@ -219,46 +204,45 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
 
-                        Column(
+                        const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text("Hello, Farmers",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold)),
+                                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                             SizedBox(height: 5),
                             Text("Live Sensor Monitoring",
-                                style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16)),
+                                style: TextStyle(color: Colors.white70, fontSize: 16)),
                           ],
                         ),
 
                         Column(
                           children: [
-
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.bluetooth, color: Colors.blue),
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            ElevatedButton(
-                              onPressed: connectBluetooth,
-                              child: Text(
-                                isConnected ? "Connected" : "Connect HC-05",
+                              child: Icon(
+                                Icons.bluetooth,
+                                color: isConnected ? Colors.blue : Colors.grey,
                               ),
                             ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: isConnecting ? null : connectBluetooth,
+                              child: Text(
+                                isConnecting ? "Connecting..." :
+                                isConnected  ? "Connected"     : "Connect HC-05",
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            // DEBUG TEXT
                             Text(
-                                rawDebug,
-                                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                                ),
+                              rawDebug,
+                              style: const TextStyle(color: Colors.red, fontSize: 10),
+                              textAlign: TextAlign.center,
+                            ),
                           ],
                         ),
                       ],
@@ -266,21 +250,18 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
                     const SizedBox(height: 25),
 
-                    // WEATHER CARD
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(30),
                       ),
-
                       child: Column(
                         children: [
 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-
                               const Row(
                                 children: [
                                   Icon(Icons.location_on_outlined, color: Colors.grey),
@@ -289,18 +270,12 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                                       style: TextStyle(fontWeight: FontWeight.bold)),
                                 ],
                               ),
-
                               Row(
                                 children: [
-                                  const Icon(Icons.cloud,
-                                      size: 45,
-                                      color: Colors.lightBlueAccent),
+                                  const Icon(Icons.cloud, size: 45, color: Colors.lightBlueAccent),
                                   const SizedBox(width: 10),
-                                  Text(
-                                    "$airTemp°C",
-                                    style: const TextStyle(
-                                        fontSize: 30, fontWeight: FontWeight.bold),
-                                  ),
+                                  Text("$airTemp°C",
+                                      style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                             ],
@@ -311,9 +286,9 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              WeatherItem(icon: Icons.thermostat, value: "$soilTemp°C", title: "Soil temp"),
-                              WeatherItem(icon: Icons.opacity, value: soilMoist, title: "Soil moist"),
-                              WeatherItem(icon: Icons.air, value: "$airTemp°C", title: "Air temp"),
+                              WeatherItem(icon: Icons.thermostat,        value: "$soilTemp°C", title: "Soil temp"),
+                              WeatherItem(icon: Icons.opacity,           value: soilMoist,     title: "Soil moist"),
+                              WeatherItem(icon: Icons.air,               value: "$airTemp°C",  title: "Air temp"),
                               WeatherItem(icon: Icons.water_drop_outlined, value: "$humidity%", title: "Humidity"),
                             ],
                           ),
@@ -326,7 +301,6 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
               const SizedBox(height: 25),
 
-              // MEASURES
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
@@ -341,8 +315,8 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        MeasureCard(title: "Soil temp", value: "$soilTemp°C", status: "Live", color: Colors.green, progress: 0.6),
-                        MeasureCard(title: "Soil moist", value: soilMoist, status: "Live", color: Colors.blue, progress: 0.7),
+                        MeasureCard(title: "Soil temp",  value: "$soilTemp°C", status: "Live", color: Colors.green,  progress: 0.6),
+                        MeasureCard(title: "Soil moist", value: soilMoist,     status: "Live", color: Colors.blue,   progress: 0.7),
                       ],
                     ),
 
@@ -352,7 +326,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         MeasureCard(title: "Air temp", value: "$airTemp°C", status: "Live", color: Colors.orange, progress: 0.4),
-                        MeasureCard(title: "Humidity", value: "$humidity%", status: "Live", color: Colors.red, progress: 0.3),
+                        MeasureCard(title: "Humidity", value: "$humidity%", status: "Live", color: Colors.red,    progress: 0.3),
                       ],
                     ),
                   ],
@@ -366,18 +340,12 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   }
 }
 
-// WEATHER ITEM
 class WeatherItem extends StatelessWidget {
   final IconData icon;
   final String value;
   final String title;
 
-  const WeatherItem({
-    super.key,
-    required this.icon,
-    required this.value,
-    required this.title,
-  });
+  const WeatherItem({super.key, required this.icon, required this.value, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +360,6 @@ class WeatherItem extends StatelessWidget {
   }
 }
 
-// MEASURE CARD
 class MeasureCard extends StatelessWidget {
   final String title;
   final String value;
