@@ -72,6 +72,7 @@ class FarmerHomePage extends StatefulWidget {
 
 class _FarmerHomePageState extends State<FarmerHomePage> {
 
+  String rawDebug = "No data yet";
   final FlutterBlueClassic bluetooth = FlutterBlueClassic();
   BluetoothConnection? connection;
 
@@ -127,6 +128,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     connection?.input?.listen(
       (event) {
         String data = utf8.decode(event);
+        setState(() => rawDebug = "GOT: $data");
         print("RAW: '$data'");
 
         buffer += data;
@@ -253,6 +255,10 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                                 isConnected ? "Connected" : "Connect HC-05",
                               ),
                             ),
+                            Text(
+                                rawDebug,
+                                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                                ),
                           ],
                         ),
                       ],
