@@ -105,6 +105,8 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
 
     await Future.delayed(const Duration(milliseconds: 500));
+    setState(() => rawDebug = "connection: ${connection != null} | input: ${connection?.input != null}");
+    await Future.delayed(const Duration(milliseconds: 2000));
 
     setState(() {
       isConnected  = true;
