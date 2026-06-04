@@ -98,61 +98,89 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   }
 
   Future<void> connectBluetooth() async {
-    try {
-      print("Connecting...");
+  try {
+    print("Connecting...");
 
-      connection?.dispose();
+    connection?.dispose();
+    connection = null;
 
-      connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
+    setState(() {
+      isConnected = false;
+      soilTemp  = "--";
+      soilMoist = "--";
+      airTemp   = "--";
+      humidity  = "--";
+    });
 
-      print("Connected");
+    connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
 
-      setState(() {
-        isConnected = true;
-      });
+    // ✅ Small delay to let the connection stabilize
+    await Future.delayed(const Duration(milliseconds: 500));
 
-      connection?.input?.listen((event) {
-  String data = utf8.decode(event);
-  print("RAW: $data");
+    print("Connected!");
 
-  buffer += data;
+    setState(() {
+      isConnected = true;
+    });
 
-  List<String> packets = buffer.split('\n');
+    // ✅ Store stream subscription so it doesn't get GC'd
+    connection?.input?.listen(
+      (event) {
+        String data = utf8.decode(event);
+        print("RAW: '$data'");
 
-  for (int i = 0; i < packets.length - 1; i++) {
-    // ✅ Strip BOTH \r and \n and extra whitespace
-    String line = packets[i].replaceAll('\r', '').trim();
+        buffer += data;
 
-    if (line.isEmpty) continue;
+        List<String> packets = buffer.split('\n');
 
-    print("LINE: $line");
+        for (int i = 0; i < packets.length - 1; i++) {
+          String line = packets[i].replaceAll('\r', '').trim();
 
-    List<String> values = line.split(',');
+          if (line.isEmpty) continue;
 
-    // ✅ Use >= 4 instead of == 4 to be more tolerant
-    if (values.length >= 4) {
-      setState(() {
-        soilTemp  = values[0].trim();
-        soilMoist = values[1].trim();
-        airTemp   = values[2].trim();
-        humidity  = values[3].trim();
-      });
-      print("✅ Parsed: soilTemp=$soilTemp moist=$soilMoist air=$airTemp hum=$humidity");
-    } else {
-      print("⚠️ Bad line (${values.length} parts): '$line'");
-    }
+          // ✅ Skip the "Sending: " prefix if it leaks through
+          if (line.startsWith("Sending:")) {
+            line = line.replaceFirst("Sending:", "").trim();
+          }
+
+          print("LINE: '$line'");
+
+          List<String> values = line.split(',');
+
+          if (values.length >= 4) {
+            setState(() {
+              soilTemp  = values[0].trim();
+              soilMoist = values[1].trim();
+              airTemp   = values[2].trim();
+              humidity  = values[3].trim();
+            });
+            print("✅ soilTemp=$soilTemp moist=$soilMoist air=$airTemp hum=$humidity");
+          } else {
+            print("⚠️ Only ${values.length} parts in: '$line'");
+          }
+        }
+
+        buffer = packets.last;
+      },
+
+      onError: (error) {
+        print("Stream error: $error");
+        setState(() => isConnected = false);
+      },
+
+      onDone: () {
+        print("Stream closed");
+        setState(() => isConnected = false);
+      },
+
+      cancelOnError: false, // ✅ Don't kill stream on a single error
+    );
+
+  } catch (e) {
+    print("Bluetooth Error: $e");
+    setState(() => isConnected = false);
   }
-
-  buffer = packets.last;
-});
-
-    } catch (e) {
-      print("Bluetooth Error: $e");
-      setState(() {
-        isConnected = false;
-      });
-    }
-  }
+}
 
   @override
   void dispose() {
