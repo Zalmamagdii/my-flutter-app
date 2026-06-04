@@ -115,9 +115,9 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     });
 
     // ✅ Use onData callback instead of .listen()
-    connection?.input?.listen(
+    connection?.input?.asBroadcastStream().listen(
       (data) {
-        String incoming = String.fromCharCodes(data);
+        String incoming = String.fromCharCodes(data is List<int> ? data : data.toList());
 
         setState(() => rawDebug = "GOT: $incoming");
 
