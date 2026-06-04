@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:typed_data';
-import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
@@ -95,83 +93,81 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   }
 
   Future<void> connectBluetooth() async {
-    if (isConnecting) return;
+  if (isConnecting) return;
 
-    setState(() => isConnecting = true);
+  setState(() => isConnecting = true);
 
-    try {
-      connection?.dispose();
-      connection = null;
+  try {
+    connection?.dispose();
+    connection = null;
 
-      connection = await BluetoothConnection.toAddress("98:D3:11:FC:DA:6B");
+    connection = await bluetooth.connect("98:D3:11:FC:DA:6B");
 
-      setState(() {
-        isConnected  = true;
-        isConnecting = false;
-        rawDebug     = "Connected! Waiting for data...";
-      });
+    await Future.delayed(const Duration(milliseconds: 500));
 
-      connection!.input!.listen(
-        (Uint8List data) {
-          String incoming = utf8.decode(data);
+    setState(() {
+      isConnected  = true;
+      isConnecting = false;
+      rawDebug     = "Connected! Waiting...";
+    });
 
-          setState(() => rawDebug = "GOT: $incoming");
+    // ✅ Use onData callback instead of .listen()
+    connection?.input?.listen(
+      (data) {
+        String incoming = String.fromCharCodes(data);
 
-          buffer += incoming;
+        setState(() => rawDebug = "GOT: $incoming");
 
-          List<String> packets = buffer.split('\n');
+        buffer += incoming;
 
-          for (int i = 0; i < packets.length - 1; i++) {
-            String line = packets[i].replaceAll('\r', '').trim();
+        List<String> packets = buffer.split('\n');
 
-            if (line.isEmpty) continue;
+        for (int i = 0; i < packets.length - 1; i++) {
+          String line = packets[i].replaceAll('\r', '').trim();
 
-            // Strip "Sending: " prefix if present
-            if (line.startsWith("Sending:")) {
-              line = line.replaceFirst("Sending:", "").trim();
-            }
+          if (line.isEmpty) continue;
 
-            List<String> values = line.split(',');
-
-            if (values.length >= 4) {
-              setState(() {
-                soilTemp  = values[0].trim();
-                soilMoist = values[1].trim();
-                airTemp   = values[2].trim();
-                humidity  = values[3].trim();
-                rawDebug  = "✅ $line";
-              });
-            }
+          if (line.startsWith("Sending:")) {
+            line = line.replaceFirst("Sending:", "").trim();
           }
 
-          buffer = packets.last;
-        },
+          List<String> values = line.split(',');
 
-        onDone: () {
-          setState(() {
-            isConnected = false;
-            rawDebug    = "Disconnected";
-          });
-        },
+          if (values.length >= 4) {
+            setState(() {
+              soilTemp  = values[0].trim();
+              soilMoist = values[1].trim();
+              airTemp   = values[2].trim();
+              humidity  = values[3].trim();
+              rawDebug  = "✅ $line";
+            });
+          }
+        }
 
-        onError: (error) {
-          setState(() {
-            isConnected = false;
-            rawDebug    = "Error: $error";
-          });
-        },
+        buffer = packets.last;
+      },
 
-        cancelOnError: false,
-      );
+      onDone: () => setState(() {
+        isConnected = false;
+        rawDebug = "Stream closed";
+      }),
 
-    } catch (e) {
-      setState(() {
-        isConnected  = false;
-        isConnecting = false;
-        rawDebug     = "Failed: $e";
-      });
-    }
+      onError: (e) => setState(() {
+        isConnected = false;
+        rawDebug = "Stream error: $e";
+      }),
+
+      cancelOnError: false,
+    );
+
+  } catch (e) {
+    setState(() {
+      isConnected  = false;
+      isConnecting = false;
+      rawDebug     = "Failed: $e";
+    });
   }
+}
 
   @override
   void dispose() {
