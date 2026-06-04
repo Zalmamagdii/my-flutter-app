@@ -65,6 +65,7 @@ class FarmerHomePage extends StatefulWidget {
 }
 
 class _FarmerHomePageState extends State<FarmerHomePage> {
+  final FlutterBlueClassic bluetooth = FlutterBlueClassic();
 
   BluetoothConnection? connection;
 
