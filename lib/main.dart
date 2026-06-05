@@ -106,7 +106,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
     await Future.delayed(const Duration(milliseconds: 500));
     setState(() => rawDebug = "connection: ${connection != null} | input: ${connection?.input != null}");
-    await Future.delayed(const Duration(milliseconds: 2000));
+    
 
     setState(() {
       isConnected  = true;
@@ -328,6 +328,58 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                         MeasureCard(title: "Humidity", value: "$humidity%", status: "Live", color: Colors.red,    progress: 0.3),
                       ],
                     ),
+                    const SizedBox(height: 30),
+
+const Text(
+  "Suggested Crops for Cultivation",
+  style: TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 20),
+
+SingleChildScrollView(
+  scrollDirection: Axis.horizontal,
+  child: Row(
+    children: const [
+      FoodItem("🌾", "Rice"),
+      FoodItem("🌽", "Corn"),
+      FoodItem("🍇", "Grapes"),
+      FoodItem("🥔", "Potato"),
+      FoodItem("🫒", "Olive"),
+      FoodItem("🍅", "Tomato"),
+    ],
+  ),
+),
+
+const SizedBox(height: 30),
+
+const Text(
+  "My Fields",
+  style: TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+  ),
+),
+
+const SizedBox(height: 20),
+
+Container(
+  height: 180,
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(25),
+    image: const DecorationImage(
+      image: NetworkImage(
+        "https://images.unsplash.com/photo-1500937386664-56d1dfef3854",
+      ),
+      fit: BoxFit.cover,
+    ),
+  ),
+),
+
+const SizedBox(height: 100),
                   ],
                 ),
               ),
