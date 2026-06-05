@@ -178,6 +178,94 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
     super.dispose();
   }
 
+  double getSoilTempProgress() {
+  double temp = double.tryParse(soilTemp) ?? 0;
+  return (temp / 50).clamp(0.0, 1.0);
+}
+
+String getSoilTempStatus() {
+  double temp = double.tryParse(soilTemp) ?? 0;
+
+  if (temp < 15) return "Cold";
+  if (temp < 30) return "Moderate";
+  return "Hot";
+}
+
+double getSoilMoistureProgress() {
+  double moist = double.tryParse(soilMoist) ?? 0;
+  return (moist / 100).clamp(0.0, 1.0);
+}
+
+String getSoilMoistureStatus() {
+  double moist = double.tryParse(soilMoist) ?? 0;
+
+  if (moist < 30) return "Dry";
+  if (moist < 70) return "Normal";
+  return "Wet";
+}
+
+double getAirTempProgress() {
+  double temp = double.tryParse(airTemp) ?? 0;
+  return (temp / 50).clamp(0.0, 1.0);
+}
+
+String getAirTempStatus() {
+  double temp = double.tryParse(airTemp) ?? 0;
+
+  if (temp < 20) return "Cool";
+  if (temp < 35) return "Warm";
+  return "Hot";
+}
+
+double getHumidityProgress() {
+  double hum = double.tryParse(humidity) ?? 0;
+  return (hum / 100).clamp(0.0, 1.0);
+}
+
+String getHumidityStatus() {
+  double hum = double.tryParse(humidity) ?? 0;
+
+  if (hum < 40) return "Low";
+  if (hum < 70) return "Medium";
+  return "High";
+}
+
+List<FoodItem> getSuggestedCrops() {
+  double temp = double.tryParse(airTemp) ?? 0;
+  double hum = double.tryParse(humidity) ?? 0;
+
+  if (temp > 30 && hum < 50) {
+    return const [
+      FoodItem("🫒", "Olive"),
+      FoodItem("🍇", "Grapes"),
+      FoodItem("🌽", "Corn"),
+    ];
+  }
+
+  if (temp > 25 && hum > 70) {
+    return const [
+      FoodItem("🌾", "Rice"),
+      FoodItem("🍅", "Tomato"),
+      FoodItem("🥔", "Potato"),
+    ];
+  }
+
+  if (temp >= 20 && temp <= 30) {
+    return const [
+      FoodItem("🍅", "Tomato"),
+      FoodItem("🌽", "Corn"),
+      FoodItem("🍇", "Grapes"),
+    ];
+  }
+
+  return const [
+    FoodItem("🥔", "Potato"),
+    FoodItem("🍅", "Tomato"),
+  ];
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -314,8 +402,20 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        MeasureCard(title: "Soil temp",  value: "$soilTemp°C", status: "Live", color: Colors.green,  progress: 0.6),
-                        MeasureCard(title: "Soil moist", value: soilMoist,     status: "Live", color: Colors.blue,   progress: 0.7),
+                        MeasureCard(
+  title: "Soil temp",
+  value: "$soilTemp°C",
+  status: getSoilTempStatus(),
+  color: Colors.green,
+  progress: getSoilTempProgress(),
+),
+                        MeasureCard(
+  title: "Soil moist",
+  value: "$soilMoist%",
+  status: getSoilMoistureStatus(),
+  color: Colors.blue,
+  progress: getSoilMoistureProgress(),
+),
                       ],
                     ),
 
@@ -324,8 +424,20 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        MeasureCard(title: "Air temp", value: "$airTemp°C", status: "Live", color: Colors.orange, progress: 0.4),
-                        MeasureCard(title: "Humidity", value: "$humidity%", status: "Live", color: Colors.red,    progress: 0.3),
+                        MeasureCard(
+  title: "Air temp",
+  value: "$airTemp°C",
+  status: getAirTempStatus(),
+  color: Colors.orange,
+  progress: getAirTempProgress(),
+),
+                        MeasureCard(
+  title: "Humidity",
+  value: "$humidity%",
+  status: getHumidityStatus(),
+  color: Colors.red,
+  progress: getHumidityProgress(),
+),
                       ],
                     ),
                     const SizedBox(height: 30),
@@ -343,14 +455,7 @@ const SizedBox(height: 20),
 SingleChildScrollView(
   scrollDirection: Axis.horizontal,
   child: Row(
-    children: const [
-      FoodItem("🌾", "Rice"),
-      FoodItem("🌽", "Corn"),
-      FoodItem("🍇", "Grapes"),
-      FoodItem("🥔", "Potato"),
-      FoodItem("🫒", "Olive"),
-      FoodItem("🍅", "Tomato"),
-    ],
+    children: getSuggestedCrops(),
   ),
 ),
 
