@@ -463,3 +463,37 @@ class MeasureCard extends StatelessWidget {
     );
   }
 }
+class FoodItem extends StatelessWidget {
+  final String emoji;
+  final String name;
+
+  const FoodItem(this.emoji, this.name, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 80,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
