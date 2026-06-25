@@ -61,7 +61,7 @@ class StartPage extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
     ),
   ),
-                child: const Text("Start", style: TextStyle(fontSize: 32) , color:Colors.green),
+                child: const Text("Start", style: TextStyle(fontSize: 32 , color: Colors.green) ,),
               ),
             ),
           ),
