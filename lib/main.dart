@@ -377,6 +377,7 @@ List<FoodItem> getSuggestedCrops() {
                               child: Text(
                                 isConnecting ? "Connecting..." :
                                 isConnected  ? "Connected"     : "Connect HC-05",
+                                style:TextStyle(color:Colors.green),
                               ),
                             ),
                             const SizedBox(height: 5),
