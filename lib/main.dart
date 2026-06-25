@@ -83,7 +83,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
   BluetoothConnection? connection;
 
-  bool isConnecting = false;
+  
   DateTime currentTime = DateTime.now();
   Timer? timer;
 
