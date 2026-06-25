@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,7 +49,19 @@ class StartPage extends StatelessWidget {
                     ),
                   );
                 },
-                child: const Text("Start", style: TextStyle(fontSize: 32)),
+                style: ElevatedButton.styleFrom(
+    minimumSize: const Size(250, 60), // Width = 250, Height = 60
+    backgroundColor: Colors.white,     // Button background
+    foregroundColor: Colors.green,     // Text color
+    side: const BorderSide(
+      color: Colors.green,             // Border color
+      width: 2,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+                child: const Text("Start", style: TextStyle(fontSize: 32) , color:Colors.green),
               ),
             ),
           ),
@@ -68,6 +82,10 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   final FlutterBlueClassic bluetooth = FlutterBlueClassic();
 
   BluetoothConnection? connection;
+
+  bool isConnecting = false;
+  DateTime currentTime = DateTime.now();
+  Timer? timer;
 
   String soilTemp  = "--";
   String soilMoist = "--";
@@ -91,6 +109,13 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
   void initState() {
     super.initState();
     requestPermissions();
+
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    setState(() {
+      currentTime = DateTime.now();
+    });
+  });
+
   }
 
   Future<void> connectBluetooth() async {
@@ -174,6 +199,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
 
   @override
   void dispose() {
+    timer?.cancel();
     connection?.dispose();
     super.dispose();
   }
@@ -291,16 +317,46 @@ List<FoodItem> getSuggestedCrops() {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
 
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Hello, Farmers",
-                                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 5),
-                            Text("Live Sensor Monitoring",
-                                style: TextStyle(color: Colors.white70, fontSize: 16)),
-                          ],
-                        ),
+                        Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    const Text(
+      "Hello, Farmers",
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+    const SizedBox(height: 5),
+
+    const Text(
+      "Live Sensor Monitoring",
+      style: TextStyle(
+        color: Colors.white70,
+        fontSize: 16,
+      ),
+    ),
+
+    const SizedBox(height: 8),
+
+    Text(
+      DateFormat('EEEE, dd MMM yyyy').format(currentTime),
+      style: const TextStyle(
+        color: Colors.white70,
+        fontSize: 14,
+      ),
+    ),
+
+    Text(
+      DateFormat('hh:mm:ss a').format(currentTime),
+      style: const TextStyle(
+        color: Colors.white70,
+        fontSize: 14,
+      ),
+    ),
+  ],
+),
 
                         Column(
                           children: [
